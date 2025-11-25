@@ -124,6 +124,10 @@ def train_mechanism(
     ckpt_path = os.path.join(log_dir, "reserve_policy.pt")
     torch.save(policy.state_dict(), ckpt_path)
     print(f"Training finished. Policy saved to {ckpt_path}")
+    
+    # 同时保存一份到根目录，方便 notebook 加载
+    torch.save(policy.state_dict(), "policy.pt")
+    print("Policy also saved to policy.pt")
 
     return policy, rewards_hist, reserves_hist
 
