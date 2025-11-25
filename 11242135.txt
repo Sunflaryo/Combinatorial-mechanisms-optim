@@ -1,0 +1,710 @@
+# 测试环境
+%run env.py
+env = CombinatorialAuctionEnv(n_agents=5, n_items=3, max_steps=5)
+obs = env.reset()
+print("环境重置成功!")
+print(f"观察: {obs}")
+print(f"观察形状: {[o.shape for o in obs]}")
+
+# 测试一步执5
+actions = [env.action_space.sample() for _ in range(env.n_agents)]
+print(f"随机动作: {actions}")
+
+next_obs, rewards, done, info = env.step(actions)
+print(f"执行成功! 奖励: {rewards}, 完成: {done}")
+env.render()
+
+环境重置成功!
+观察: [array([2.30887485, 2.67285542, 5.65652893, 0.        , 0.        ,
+       0.        , 0.        ]), array([0.89309255, 1.96834453, 9.57370136, 0.        , 0.        ,
+       0.        , 0.        ]), array([7.79874765, 9.6780759 , 3.26695927, 0.        , 0.        ,
+       0.        , 0.        ]), array([8.72314591, 2.36838748, 6.45185815, 0.        , 0.        ,
+       0.        , 0.        ]), array([2.76971443, 5.48552754, 7.93721317, 0.        , 0.        ,
+       0.        , 0.        ])]
+观察形状: [(7,), (7,), (7,), (7,), (7,)]
+随机动作: [array([6.6146865, 9.580648 , 7.882105 ], dtype=float32), array([3.2868772, 3.65897  , 7.0528464], dtype=float32), array([4.882179 , 7.870029 , 4.6048765], dtype=float32), array([1.3615214, 5.0860004, 9.151056 ], dtype=float32), array([8.537361 , 0.2907741, 2.0430338], dtype=float32)]
+执行成功! 奖励: [-5.19717355  0.          0.         -1.43024673 -3.84497206], 完成: False
+
+=== 回合 1 ===
+真实估值:
+  智能体 0: [2.30887485 2.67285542 5.65652893]
+  智能体 1: [0.89309255 1.96834453 9.57370136]
+  智能体 2: [7.79874765 9.6780759  3.26695927]
+  智能体 3: [8.72314591 2.36838748 6.45185815]
+  智能体 4: [2.76971443 5.48552754 7.93721317]
+出价:
+  智能体 0: [6.6146865 9.580648  7.882105 ]
+  智能体 1: [3.2868772 3.65897   7.0528464]
+  智能体 2: [4.882179  7.870029  4.6048765]
+  智能体 3: [1.3615214 5.0860004 9.151056 ]
+  智能体 4: [8.537361  0.2907741 2.0430338]
+分配结果:
+  智能体 0 获得物品: [1]
+  智能体 1 获得物品: []
+  智能体 2 获得物品: []
+  智能体 3 获得物品: [2]
+  智能体 4 获得物品: [0]
+支付:
+  智能体 0: 7.87
+  智能体 1: 0.00
+  智能体 2: 0.00
+  智能体 3: 7.88
+  智能体 4: 6.61
+效用:
+  智能体 0: -5.20
+  智能体 1: 0.00
+  智能体 2: 0.00
+  智能体 3: -1.43
+  智能体 4: -3.84
+
+# 测试 MADDPG
+%run maddpg.py
+
+# 使用与环境相同的参数
+n_agents = 2
+obs_dims = [env.obs_dim] * n_agents  # 注意使用 env.obs_dim 而不是 env.n_items
+act_dims = [env.n_items] * n_agents
+
+maddpg = MADDPG(n_agents, obs_dims, act_dims)
+print("MADDPG 初始化成功!")
+
+# 测试动作生成
+test_obs = env.reset()
+test_actions = maddpg.act(test_obs)
+print(f"MADDPG 生成的动作: {test_actions}")
+
+
+MADDPG 初始化成功!
+MADDPG 生成的动作: [array([0.37231618, 0.53775936, 0.44884092], dtype=float32), array([0.44975576, 0.6657661 , 0.56756955], dtype=float32)]
+
+
+# 简化训练循环
+import numpy as np
+
+# 重置环境
+obs_list = env.reset()
+done = False
+episode_reward = 0
+
+while not done:
+    # 使用 MADDPG 生成动作
+    actions = maddpg.act(obs_list)
+    
+    # 执行动作
+    next_obs_list, rewards, done, info = env.step(actions)
+    episode_reward += np.sum(rewards)
+    
+    # 存储经验
+    maddpg.buffer.add((obs_list, actions, rewards, next_obs_list, done))
+    
+    # 更新观察
+    obs_list = next_obs_list
+    
+    print(f"步骤奖励: {rewards}, 累计奖励: {episode_reward}")
+
+print(f"回合结束，总奖励: {episode_reward}")
+
+# 尝试更新 MADDPG
+print("尝试更新 MADDPG...")
+maddpg.update(batch_size=32)
+print("更新完成!")
+
+
+步骤奖励: [ 2.11409236 11.52363563], 累计奖励: 13.63772798495957
+步骤奖励: [ 2.11305282 11.510764  ], 累计奖励: 27.26154481207269
+步骤奖励: [ 2.11333094 11.50952971], 累计奖励: 40.88440546147432
+步骤奖励: [ 2.11354626 11.50805396], 累计奖励: 54.50600568125521
+步骤奖励: [ 2.11386515 11.50652605], 累计奖励: 68.12639688042148
+回合结束，总奖励: 68.12639688042148
+尝试更新 MADDPG...
+更新完成!
+
+
+debug-env.py
+# debug_env.py
+import numpy as np
+from env import CombinatorialAuctionEnv
+
+def test_env_basic():
+    """测试环境的基本功能"""
+    print("=== 测试环境基本功能 ===")
+    
+    # 创建环境
+    env = CombinatorialAuctionEnv(n_agents=2, n_items=3, max_steps=5)
+    print(f"环境创建成功: {env.n_agents}个智能体, {env.n_items}个物品")
+    
+    # 测试重置
+    try:
+        obs = env.reset()
+        print(f"重置成功，观察形状: {[o.shape for o in obs]}")
+        print(f"第一个智能体的观察: {obs[0]}")
+    except Exception as e:
+        print(f"重置失败: {e}")
+        return False
+    
+    # 测试随机动作
+    try:
+        actions = [env.action_space.sample() for _ in range(env.n_agents)]
+        print(f"生成随机动作: {[a.shape for a in actions]}")
+        
+        # 执行一步
+        next_obs, rewards, done, info = env.step(actions)
+        print(f"执行步骤成功")
+        print(f"奖励: {rewards}")
+        print(f"完成状态: {done}")
+        print(f"信息键: {info.keys()}")
+        
+        # 渲染
+        env.render()
+    except Exception as e:
+        print(f"执行步骤失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+    return True
+
+def test_multiple_steps():
+    """测试多步执行"""
+    print("\n=== 测试多步执行 ===")
+    
+    env = CombinatorialAuctionEnv(n_agents=2, n_items=3, max_steps=3)
+    obs = env.reset()
+    
+    for step in range(5):  # 尝试执行5步，即使max_steps=3
+        actions = [env.action_space.sample() for _ in range(env.n_agents)]
+        next_obs, rewards, done, info = env.step(actions)
+        
+        print(f"步骤 {step+1}: 奖励={rewards}, 完成={done}")
+        env.render()
+        
+        if done:
+            print("环境已结束")
+            break
+            
+        obs = next_obs
+
+if __name__ == "__main__":
+    # 运行基本测试
+    success = test_env_basic()
+    
+    if success:
+        # 运行多步测试
+        test_multiple_steps()
+        print("\n=== 所有测试完成 ===")
+    else:
+        print("\n=== 测试失败 ===")
+
+
+demo_run.py
+# demo_run.py
+from env import CombinatorialAuctionEnv
+from maddpg import MADDPG
+import numpy as np
+
+env = CombinatorialAuctionEnv(n_agents=5, n_items=3) # 先用简单参数
+n_agents = env.n_agents
+obs_dims = [env.n_items] * n_agents
+act_dims = [env.n_items] * n_agents
+
+maddpg = MADDPG(n_agents, obs_dims, act_dims)
+
+for episode in range(100):
+    obs_list = env.reset() # 现在reset返回obs_list
+    done = False
+    episode_rewards = []
+
+    while not done:
+        # 1. MADDPG产生动作
+        actions = maddpg.act(obs_list) # 现在输入和输出都是列表，维度对了
+
+        # 2. 环境执行动作
+        next_obs_list, rewards, done, info = env.step(actions)
+        episode_rewards.append(sum(rewards))
+
+        # 3. 存储经验 (state是上一个obs_list, next_state是next_obs_list)
+        maddpg.buffer.add((obs_list, actions, rewards, next_obs_list, [done]*n_agents))
+
+        obs_list = next_obs_list
+
+    # 4. 更新MADDPG
+    maddpg.update(batch_size=32)
+
+    print(f"Episode {episode}, Total Reward: {sum(episode_rewards):.2f}")
+
+print("Demo run finished!")
+
+env.py
+# env.py
+import numpy as np
+from typing import List, Dict, Tuple, Optional
+import gym
+from gym import spaces
+
+class CombinatorialAuctionEnv(gym.Env):
+    """
+    组合拍卖环境
+    
+    环境描述：
+    - N个智能体（竞拍者），M个物品
+    - 每个智能体对物品组合有私有估值（通过价值函数表示）
+    - 每个智能体提交一个出价向量（对每个物品的出价）
+    - 分配规则：将每个物品分配给对其出价最高的智能体
+    - 支付规则：次价支付（每个获胜者支付对应物品的第二高出价）
+    - 智能体效用：分配到的物品组合的价值减去总支付
+    
+    观察空间：
+    每个智能体观察到：
+    - 自己的私有估值向量 (M维)
+    - 上一轮所有物品的最高出价 (M维)
+    - 当前回合数 (1维)
+    
+    动作空间：
+    每个智能体对每个物品的出价 (M维)，范围在 [0, max_bid]
+    
+    奖励：
+    每个智能体的奖励是其效用（价值减去支付）
+    """
+
+    metadata = {"render.modes": ["human"]}
+
+    def __init__(self, n_agents: int = 3, n_items: int = 5, max_bid: float = 10.0, max_steps: int = 20):
+        super().__init__()
+        self.n_agents = n_agents
+        self.n_items = n_items
+        self.max_bid = max_bid
+        self.max_steps = max_steps
+
+        # 定义每个智能体的观察空间
+        # 观察包括: 自己的估值(M) + 上一轮最高出价(M) + 回合数(1)
+        self.obs_dim = n_items * 2 + 1
+        self.observation_space = spaces.Box(
+            low=0.0, 
+            high=max_bid, 
+            shape=(self.obs_dim,), 
+            dtype=np.float32
+        )
+        
+        # 定义每个智能体的动作空间 (对每个物品的出价)
+        self.action_space = spaces.Box(
+            low=0.0, 
+            high=max_bid, 
+            shape=(n_items,), 
+            dtype=np.float32
+        )
+
+        # 环境状态
+        self.timestep = 0
+        self.true_valuations = None  # 智能体对物品的真实估值 (n_agents, n_items)
+        self.last_max_bids = None    # 上一轮各物品的最高出价 (n_items,)
+        
+        # 用于记录历史信息
+        self.history = {
+            'allocations': [],
+            'payments': [],
+            'utilities': [],
+            'bids': []
+        }
+
+    def reset(self) -> List[np.ndarray]:
+        """重置环境状态并返回初始观察"""
+        self.timestep = 0
+        
+        # 生成新的私有估值 - 每个智能体对每个物品的估值
+        self.true_valuations = np.random.rand(self.n_agents, self.n_items) * self.max_bid
+        
+        # 初始化上一轮最高出价为0
+        self.last_max_bids = np.zeros(self.n_items)
+        
+        # 清空历史
+        self.history = {
+            'allocations': [],
+            'payments': [],
+            'utilities': [],
+            'bids': []
+        }
+        
+        # 返回每个智能体的初始观察
+        return self._get_obs()
+
+    def step(self, actions: List[np.ndarray]) -> Tuple[List[np.ndarray], np.ndarray, bool, Dict]:
+        """
+        执行一个时间步
+        
+        参数:
+            actions: 每个智能体的动作 (出价向量) 列表
+            
+        返回:
+            obs_list: 每个智能体的新观察
+            rewards: 每个智能体的奖励
+            done: 是否结束
+            info: 附加信息
+        """
+        self.timestep += 1
+        actions = np.asarray(actions)  # 形状: (n_agents, n_items)
+        
+        # 记录本轮出价
+        self.history['bids'].append(actions.copy())
+        
+        # 分配物品给最高出价者
+        winners = np.argmax(actions, axis=0)  # 每个物品的获胜者索引
+        
+        # 计算支付 (次价支付规则)
+        payments = np.zeros(self.n_agents)
+        allocations = np.zeros((self.n_agents, self.n_items), dtype=bool)
+        
+        for item in range(self.n_items):
+            item_bids = actions[:, item]
+            winner = winners[item]
+            
+            # 分配物品给获胜者
+            allocations[winner, item] = True
+            
+            # 计算支付 (第二高出价)
+            if self.n_agents > 1:
+                # 获取第二高的出价
+                second_price = np.partition(item_bids, -2)[-2]
+                payments[winner] += second_price
+            # 如果只有一个竞拍者，支付0或保留价 (这里设为0)
+        
+        # 计算每个智能体的效用 (价值 - 支付)
+        # 注意: 这里假设价值是可加的 (没有组合效应)
+        utilities = np.zeros(self.n_agents)
+        for i in range(self.n_agents):
+            # 智能体i获得物品的总价值
+            value = np.sum(self.true_valuations[i] * allocations[i])
+            utilities[i] = value - payments[i]
+        
+        # 更新上一轮最高出价
+        self.last_max_bids = np.max(actions, axis=0)
+        
+        # 记录历史
+        self.history['allocations'].append(allocations)
+        self.history['payments'].append(payments)
+        self.history['utilities'].append(utilities)
+        
+        # 检查是否结束
+        done = self.timestep >= self.max_steps
+        
+        # 获取新观察
+        next_obs = self._get_obs()
+        
+        # 信息字典
+        info = {
+            "allocations": allocations,
+            "payments": payments,
+            "utilities": utilities,
+            "winners": winners
+        }
+        
+        return next_obs, utilities, done, info
+
+    def _get_obs(self) -> List[np.ndarray]:
+        """获取每个智能体的观察"""
+        obs_list = []
+        for i in range(self.n_agents):
+            # 观察包括: 自己的估值 + 上一轮最高出价 + 当前回合数(归一化)
+            agent_obs = np.concatenate([
+                self.true_valuations[i].copy(),  # 自己的估值
+                self.last_max_bids.copy(),       # 上一轮最高出价
+                [self.timestep / self.max_steps] # 归一化的回合数
+            ])
+            obs_list.append(agent_obs)
+        return obs_list
+
+    def render(self, mode: str = 'human'):
+        """渲染环境状态"""
+        if mode == 'human':
+            print(f"\n=== 回合 {self.timestep} ===")
+            print("真实估值:")
+            for i in range(self.n_agents):
+                print(f"  智能体 {i}: {self.true_valuations[i]}")
+            
+            if self.timestep > 0:
+                last_bids = self.history['bids'][-1]
+                print("出价:")
+                for i in range(self.n_agents):
+                    print(f"  智能体 {i}: {last_bids[i]}")
+                
+                print("分配结果:")
+                allocations = self.history['allocations'][-1]
+                for i in range(self.n_agents):
+                    items_won = np.where(allocations[i])[0]
+                    print(f"  智能体 {i} 获得物品: {items_won}")
+                
+                print("支付:")
+                payments = self.history['payments'][-1]
+                for i in range(self.n_agents):
+                    print(f"  智能体 {i}: {payments[i]:.2f}")
+                
+                print("效用:")
+                utilities = self.history['utilities'][-1]
+                for i in range(self.n_agents):
+                    print(f"  智能体 {i}: {utilities[i]:.2f}")
+
+    def get_global_state(self) -> Dict:
+        """获取全局状态 (用于高层控制器或MCTS)"""
+        return {
+            "timestep": self.timestep,
+            "true_valuations": self.true_valuations.copy(),
+            "last_max_bids": self.last_max_bids.copy(),
+            "history": self.history.copy()
+        }
+
+high_level.py
+# high_level.py
+import torch, torch.nn as nn, torch.optim as optim
+from torch.distributions import Categorical, Normal
+
+class HighPolicy(nn.Module):
+    def __init__(self, obs_dim, param_dim):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(obs_dim,128), nn.Tanh(), nn.Linear(128,param_dim))
+    def forward(self, x):
+        return self.net(x)
+
+class PPOController:
+    def __init__(self, obs_dim, param_dim, lr=3e-4):
+        self.policy = HighPolicy(obs_dim, param_dim)
+        self.opt = optim.Adam(self.policy.parameters(), lr=lr)
+    def get_params(self, obs):
+        # obs: macro state -> return mechanism params (e.g., weights)
+        x = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+        params = torch.tanh(self.policy(x)).detach().squeeze(0).numpy()
+        return params
+    def update(self, trajs):
+        # trajs: collected high-level transitions; implement PPO update here
+        pass
+
+maddpg.py
+# maddpg.py
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from collections import deque
+import random
+import numpy as np
+
+class Actor(nn.Module):
+    def __init__(self, obs_dim, act_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim,128), nn.ReLU(),
+            nn.Linear(128,128), nn.ReLU(),
+            nn.Linear(128, act_dim),
+            nn.Sigmoid()  # scale later
+        )
+    def forward(self, x):
+        return self.net(x)
+
+class Critic(nn.Module):
+    def __init__(self, full_obs_dim, full_act_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(full_obs_dim + full_act_dim,256), nn.ReLU(),
+            nn.Linear(256,128), nn.ReLU(),
+            nn.Linear(128,1)
+        )
+    def forward(self, obs, acts):
+        x = torch.cat([obs, acts], dim=-1)
+        return self.net(x)
+
+class ReplayBuffer:
+    def __init__(self, maxsize=100000):
+        self.buf = deque(maxlen=maxsize)
+    def add(self, sample):
+        self.buf.append(sample)
+    def sample(self, batch_size):
+        batch = random.sample(self.buf, batch_size)
+        return batch
+
+class MADDPG:
+    def __init__(self, n_agents, obs_dims, act_dims, lr=1e-3, gamma=0.99):
+        self.n = n_agents
+        self.actors = [Actor(obs_dims[i], act_dims[i]) for i in range(self.n)]
+        self.critics = [Critic(sum(obs_dims), sum(act_dims)) for _ in range(self.n)]
+        self.target_actors = [Actor(obs_dims[i], act_dims[i]) for i in range(self.n)]
+        self.target_critics = [Critic(sum(obs_dims), sum(act_dims)) for _ in range(self.n)]
+        self.optimizers = [optim.Adam(list(self.actors[i].parameters())+list(self.critics[i].parameters()), lr=lr) for i in range(self.n)]
+        self.buffer = ReplayBuffer()
+        self.gamma = gamma
+        # TODO: copy parameters to targets
+
+    def act(self, obs_list):
+        actions = []
+        for i,obs in enumerate(obs_list):
+            o = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+            with torch.no_grad():
+                a = self.actors[i](o).squeeze(0).numpy()
+            actions.append(a)
+        return actions
+
+    def update(self, batch_size=64):
+        if len(self.buffer.buf) < batch_size: 
+            return
+        batch = self.buffer.sample(batch_size)
+        # batch items: (obs_list, action_list, reward_list, next_obs_list, done)
+        # TODO: implement critic/actor update using centralized critic
+        pass
+
+mcts.py
+# mcts.py
+import math, random
+from collections import defaultdict, namedtuple
+
+TreeNode = namedtuple("TreeNode", ["visits", "value", "children", "prior"])
+
+class SimpleMCTS:
+    def __init__(self, policy_func, rollout_steps=3, c_puct=1.0):
+        """
+        policy_func(state) -> action distribution or single action
+        policy_func should be deterministic or stochastic model (actor) used for rollouts
+        """
+        self.policy_func = policy_func
+        self.c_puct = c_puct
+        self.rollout_steps = rollout_steps
+
+    def search(self, root_state, simulate_env_fn, n_sim=50):
+        """
+        simulate_env_fn(state, action) -> next_state, reward, done, info
+        root_state: environment state representation
+        returns: best_action
+        """
+        root = {"N":0, "W":0, "Q":0, "children":{}, "prior":1.0}
+        for _ in range(n_sim):
+            self._simulate(root, root_state, simulate_env_fn)
+        # pick child with highest Q/N
+        best_action = max(root["children"].items(), key=lambda kv: kv[1]["Q"]/max(1,kv[1]["N"]))[0]
+        return best_action
+
+    def _simulate(self, node, state, simulate_fn):
+        # select/expand/rollout/backprop simplified
+        # selection
+        if len(node["children"])==0:
+            # expand using policy
+            acts = self.policy_func(state)  # returns list of candidate actions
+            for a,prior in acts:
+                node["children"][a] = {"N":0,"W":0,"Q":0,"prior":prior}
+        # pick child with highest UCB
+        best_a, best_child = None, None
+        best_score = -float("inf")
+        for a,child in node["children"].items():
+            U = self.c_puct * child["prior"] * math.sqrt(node["N"]+1)/(1+child["N"])
+            Q = child["Q"]/max(1,child["N"])
+            score = Q + U
+            if score>best_score:
+                best_score=score
+                best_a=a
+                best_child=child
+        # simulate one step
+        next_state, reward, done, _ = simulate_fn(state, best_a)
+        # rollout
+        total_reward = reward
+        if not done:
+            # micro-rollout using policy
+            s = next_state
+            for _ in range(self.rollout_steps):
+                acts = self.policy_func(s)
+                if len(acts)==0: break
+                a = acts[0][0]
+                s, r, done, _ = simulate_fn(s, a)
+                total_reward += r
+                if done: break
+        # backpropagate: update child and node (simple)
+        best_child["N"] += 1
+        best_child["W"] += total_reward
+        best_child["Q"] = best_child["W"]
+        node["N"] += 1
+        node["W"] = node.get("W",0)+total_reward
+##上面 policy_func 可以由已训练的 actor 网络（mid-level）提供；simulate_env_fn 可以用 env 的复制/fast-forward 来进行。MCTS 的输出（高价值 action paths）可以放入中层的经验池或作为 reward 修正因子。
+
+train01.py
+# train.py
+from env import CombinatorialAuctionEnv
+from maddpg import MADDPG
+from mcts import SimpleMCTS
+from high_level import PPOController
+import numpy as np
+
+env = CombinatorialAuctionEnv(n_agents=3, n_items=5)
+n_agents = env.n_agents
+obs_dims = [env.n_items]*n_agents
+act_dims = [env.n_items]*n_agents
+
+# instantiate components
+maddpg = MADDPG(n_agents, obs_dims, act_dims)
+high_ctrl = PPOController(obs_dim=10, param_dim=3)  # example
+# a simple policy_func for mcts using maddpg.actor (wrap)
+def policy_func(state):
+    # returns list [(action, prior_prob), ...] for candidate generation
+    # here dummy: sample random few actions
+    acts = []
+    for _ in range(5):
+        a = np.random.rand(env.n_items)*env.max_bid
+        acts.append((a, 1.0/5))
+    return acts
+
+mcts = SimpleMCTS(policy_func)
+
+for episode in range(100):
+    state = env.reset()
+    done = False
+    while not done:
+        # high level: every K steps decide mechanism params
+        # mid level: produce actions for each agent (we use random as placeholder)
+        actions = [np.random.rand(env.n_items)*env.max_bid for _ in range(n_agents)]
+
+        # optionally use MCTS for one agent to refine its action
+        best_a = mcts.search(state, lambda s,a: env.step([a if i==0 else np.random.rand(env.n_items)*env.max_bid for i in range(n_agents)]), n_sim=20)
+        # integrate best_a into actions[0]
+        actions[0] = best_a
+
+        obs, rewards, done, info = env.step(actions)
+        # push to replay for MADDPG
+        maddpg.buffer.add((state, actions, rewards, obs, done))
+        state = obs
+
+    # after episode, update MADDPG (several gradient steps)
+    maddpg.update(batch_size=32)
+    # update high-level policy using episode summary (sketch)
+
+notes.md
+自适应奖励（reward shaping）与冷启动实现细节
+
+动态 reward 设计要点
+
+把 reward 分为：即时收益（agent utility）、长期指标（社会福利）、惩罚项（偏离、违规、流拍）。
+
+state-aware scaling：当竞争强度高（更多 active bidders）时，把“避免流拍”权重提高。
+
+使用 MCTS 估计的 long-term value V_mcts 来修正即时 reward：r' = r + λ * (V_mcts - baseline)。
+
+冷启动（预训练）
+
+从历史数据用行为克隆（supervised）先训练 actor：训练目标最小化 L = ||π(o)-a_demo||^2。
+
+将行为克隆策略作为 MADDPG 的初始 actor 权重（减少探索期浪费）。
+
+把 MCTS 结果注入训练
+
+把 MCTS 推荐的（state, action, value) 放入 prioritized replay；训练时采样优先级更高的数据用于 critic 更新。
+
+5 评价指标、对照组与消融实验
+
+指标：社会福利(sum utilities)、拍卖收入(organizer revenue)、公平性（Gini/多人标准差）、收敛速度（episodes to threshold）、鲁棒性（面对新 agents 的表现）。
+
+对照组：VCG、Myerson-like static mechanism、standard MADDPG（无 MCTS）、无高层调整（固定机制）。
+
+消融：去掉 MCTS / 去掉高层 / 去掉自适应 reward，分别比较上面指标。
+
+2025/9/5 23:08
+
+一旦基础数据流打通，就可以按优先级逐一实现核心功能：
+
+实现 MADDPG.update() 方法：这是最大的任务。你需要参考MADDPG论文中的损失函数，用PyTorch实现集中式Critic和策略梯度的计算。
+
+为MCTS提供策略函数：将 maddpg.actors[agent_id] 包装成一个可以用于MCTS policy_func 的函数。
+
+实现高层控制器的更新逻辑：设计高层策略的奖励信号（如回合总收益），实现PPO的更新步骤。
+
+连接高层与中层：定义高层输出的参数（如θ_payment）如何影响环境的奖励计算或智能体的动作。

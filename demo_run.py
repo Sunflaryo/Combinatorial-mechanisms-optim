@@ -5,7 +5,7 @@ import numpy as np
 
 env = CombinatorialAuctionEnv(n_agents=5, n_items=3) # 先用简单参数
 n_agents = env.n_agents
-obs_dims = [env.n_items] * n_agents
+obs_dims = [env.obs_dim] * n_agents
 act_dims = [env.n_items] * n_agents
 
 maddpg = MADDPG(n_agents, obs_dims, act_dims)
@@ -24,7 +24,7 @@ for episode in range(100):
         episode_rewards.append(sum(rewards))
 
         # 3. 存储经验 (state是上一个obs_list, next_state是next_obs_list)
-        maddpg.buffer.add((obs_list, actions, rewards, next_obs_list, [done]*n_agents))
+        maddpg.store_transition(obs_list, actions, rewards, next_obs_list, done)
 
         obs_list = next_obs_list
 
