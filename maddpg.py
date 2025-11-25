@@ -17,7 +17,7 @@ class Actor(nn.Module):
     """
     单个智能体的策略网络：
     输入：obs (batch, obs_dim)
-    输出：动作 a \in [0,1]^act_dim （之后可按需求缩放到出价区间）
+    输出：动作 a ∈ [0,1]^act_dim （之后可按需求缩放到出价区间）
     """
     def __init__(self, obs_dim: int, act_dim: int, hidden_dim: int = 128):
         super().__init__()
