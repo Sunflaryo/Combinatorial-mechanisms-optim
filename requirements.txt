@@ -1,0 +1,6 @@
+numpy
+torch
+gym
+matplotlib
+notebook
+reportlab

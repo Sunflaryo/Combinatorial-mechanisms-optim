@@ -1,0 +1,105 @@
+开题时的思路补充回溯
+
+看完《答辩稿.docx》之后，我的感觉是：开题时的很多想法并不是“过时了”或者“要推翻”，而是需要换一种更像机制设计论文的说法。现在的 ourwork 已经从比较宽泛的“多智能体在动态环境里学策略”，收束到了“auctioneer 在 Affine Maximizer Auction (AMA) 结构内学参数”。这个收束是好事，因为它让项目更容易讲清楚，也更容易守住 dominant-strategy incentive compatibility (DSIC) 和 individual rationality (IR) 这些机制设计里的硬要求。
+
+一、开题时最值得保留的主线
+
+1. “动态组合机制设计”这个大问题仍然是对的
+
+开题稿里把 Combinatorial Mechanism Design (CMD) 说成连接博弈论和计算优化、用于多物品/多服务资源分配的框架，这个方向是可以继续保留的。现在的 literature review 也应该继续强调：我们不是只做一个普通 RL toy problem，而是在处理组合拍卖里“多物品分配 + 激励约束 + 收入目标 + 动态环境”叠在一起的问题。
+
+更适合现在的说法是：
+
+传统机制设计给了我们 incentive compatibility 的规则结构，但很多机制是静态的；深度学习方法能处理高维输入，但常常牺牲可解释性或只能做到近似激励相容；我们的切入点是把 AMA 这种 exact-DSIC 的结构固定住，再让 RL 在这个结构里动态调节参数。
+
+2. “已有方法不够动态、不够可解释”这个判断仍然有用
+
+开题稿里提到的几个 gap，包括 Myerson 主要解决单物品、多维场景困难，手工设计支付规则难以适应动态变化，深度学习模型缺乏可解释性，传统框架计算复杂等，都可以保留，但需要写得更准确。
+
+现在可以改写成：
+
+- Myerson 是单物品最优拍卖的经典起点，但不能直接给出一般 multi-bidder multi-item combinatorial auction 的完整最优机制。
+- RegretNet 等深度学习机制设计方法很灵活，但 incentive compatibility 多靠 regret penalty 近似约束。
+- AMA-based 方法可解释、能保证 exact DSIC 和 IR，但多数工作仍然偏静态机制学习。
+- 动态机制和 RL 拍卖已经有人研究，但不一定是在 exact-DSIC AMA 参数空间里做 revenue-oriented tuning。
+
+这样就比开题稿里“已有研究都有缺陷，所以我们提出新方法”更稳，也更像文献综述。
+
+3. “分层”这个想法可以继续强调
+
+开题稿的核心技术路线是分层：高层做机制目标优化，中层处理个体策略，低层做搜索或反馈。现在的 ourwork 其实已经保留了最重要的部分：高层 controller 输出宏观目标，低层 worker 把目标翻译成具体 AMA 参数。
+
+但中层“bidder/agent 自己学习报价策略”这一块要谨慎。张萌老师在会议里提醒过，机制设计很多时候就是为了让 bidder 的策略简单，也就是 truthful reporting。把 bidder 学习报价作为主线，会让问题变成多智能体策略学习，而不是机制设计。
+
+所以更适合现在的说法是：
+
+开题时的分层思想可以保留，但分层对象要从“多个 bidder 学策略”改成“机制设计者分层调节机制参数”。高层决定当前阶段的机制目标，例如更重视 revenue、预算消耗控制或非平稳变化；低层输出当轮 AMA 的 bidder weights 和 allocation/item weights；最后由 deterministic AMA solver 清算拍卖，并通过 revenue 和 budget feedback 回到下一轮状态。
+
+4. “动态奖励/反馈闭环”可以作为 RL 设计动机
+
+开题稿里提到 sparse reward、dynamic reward functions、cold-start/pre-training。现在如果没有完整实现，就不要把它们写成已经完成的贡献。但它们可以作为 HRL-AMA 的设计动机或后续计划。
+
+可以保留的说法是：
+
+重复拍卖里的 reward 不是单轮静态的，auctioneer 关心的是长期 cumulative revenue，也要考虑预算消耗、非平稳估值和近期市场变化。因此，RL state 和 reward 设计不能只看当前 bids，而需要把历史 revenue、预算比例、时间进度等信息放进去。开题时说的“反馈闭环”可以在现在的框架里落成：state -> RL policy -> AMA parameters -> deterministic AMA outcome -> revenue/budget feedback -> next state。
+
+二、需要修正或不要照搬的地方
+
+1. 不要继续强调“bidder 学会怎么报价”
+
+开题稿里有一些表述，比如 agents adjust bids in real time、MADDPG 学 bidder 策略、MCTS 模拟不同报价路径。这些作为早期 brainstorming 可以理解，但如果写进现在的论文主线，会和机制设计目标冲突。
+
+现在更好的叙事是：
+
+我们希望 bidder 不需要复杂学习；机制的目标是让 truthful reporting 成为简单、稳定的策略。学习发生在 auctioneer 侧，用来选择机制参数，而不是发生在 bidder 侧，用来学习 strategic bidding。
+
+2. 不要使用没有证据支撑的效果数字
+
+开题稿里出现了不少比较强的数字和承诺，比如收益提升 16%、效率提升 3 倍、200ms 调整、10 万行代码、3TB 数据、目标 NeurIPS 2026 等。如果这些不是已经有记录、有实验、有代码支撑，就不要写进 literature review 或 ourwork 正文。
+
+更稳的做法是把它们当作“开题时的愿景”，不是“当前结果”。现在的文字可以说 preliminary experiments 或 future milestone，但不要把未验证指标写成事实。
+
+3. 不要把“通用 CMD 框架”作为当前 claim
+
+开题稿里说“首次实现动态 CMD 问题的通用求解框架”，这个说法太大。现在项目更适合收窄到 repeated combinatorial auction 或 dynamic AMA parameter tuning。收窄不是退步，反而是让工作变得可证明、可实验、可投稿。
+
+可以改成：
+
+我们不是解决所有 dynamic CMD，而是在组合拍卖这一类机制中，研究如何把 exact-DSIC AMA 结构和 RL-based dynamic revenue optimization 结合起来。
+
+三、可以补进 literature review 的 ourwork 对比点
+
+开题稿能给 current ourwork 补上三个“人能听懂”的动机：
+
+第一，为什么要动态？
+
+因为真实拍卖或资源分配不是一次性的。估值分布会变，预算会消耗，竞争强度会变。如果机制参数始终静态，可能在某些阶段表现不错，但遇到 non-stationarity 就不够灵活。
+
+第二，为什么要分层？
+
+因为机制参数不是一个单纯的低维按钮。高层需要决定当前阶段的目标倾向，低层才负责把这个目标变成具体 AMA 参数。这个分层结构可以把“长期市场策略”和“单轮拍卖清算”分开，解释性也更好。
+
+第三，为什么要 AMA？
+
+因为我们不能只追 revenue，而不管 bidder 是否还有 truthful reporting 的激励。AMA 的价值在于，它先把 exact DSIC 和 IR 放进机制结构里。这样 RL 的探索不会随便跑到一个高收入但激励性质不可靠的机制里。
+
+四、建议写进 ourwork/literature review 的自然表述
+
+可以这样写：
+
+开题阶段的项目设想强调了三个问题：组合机制设计面对高维分配空间，传统静态机制难以适应动态市场变化，而纯深度学习方法虽然灵活，却容易失去可解释性和激励保证。当前的 HRL-AMA 可以看作对这一早期设想的收束：我们不再把重点放在 bidder 学习复杂报价策略上，而是把学习移动到 auctioneer 侧，让机制设计者在 AMA 这一 exact-DSIC 结构内动态调节参数。这样既保留了开题时关于动态性、分层决策和反馈闭环的直觉，也让问题更贴近机制设计文献中的核心约束。
+
+五、最短总结
+
+开题稿不是没用了。它提供了项目最初的三个关键词：动态、分层、反馈。但现在要把这三个词翻译成更准确的研究语言：
+
+- 动态：repeated / non-stationary auction environment。
+- 分层：high-level goal controller + low-level AMA parameter worker。
+- 反馈：revenue and budget feedback drives future AMA parameter choices。
+
+同时要删掉或弱化两个容易出问题的方向：
+
+- bidder 自己学报价，不再作为主线。
+- 没验证过的性能数字，不作为当前成果。
+
+这样处理之后，开题时的思路就不是“旧版本”，而是 current ourwork 的动机来源和问题收束过程。
